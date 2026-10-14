@@ -3,3 +3,4 @@ engine/.cargo-home/
 skin/target/
 vst/build/
 dist/
+vst/preview/

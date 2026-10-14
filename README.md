@@ -15,14 +15,17 @@ Status: running on a Force; sounds right, skin being finished. Not yet tested on
 
 | | |
 |---|---|
-| ![OSCILLATORS](docs/img/oscillators.png) | ![MODIFIERS](docs/img/modifiers.png) |
-| ![PERFORM](docs/img/perform.png) | ![STEREO](docs/img/stereo.png) |
+| ![OSCILLATORS](docs/img/oscillators.png) | ![MIXER](docs/img/mixer.png) |
+| ![MODIFIERS](docs/img/modifiers.png) | ![PERFORM](docs/img/perform.png) |
+| ![STEREO](docs/img/stereo.png) | |
 
-Four tabs, each with its own Q-Link bank: **OSCILLATORS** (controllers, oscillator bank, mixer), **MODIFIERS**
-(filter, contours, output, QUALITY and POWER, then VOICES as a section of its own), **PERFORM** (left-hand
-controller, OUTPUT with DRIVE, LEVEL, AUTO GAIN, BEND RANGE and BASS COMP) and **STEREO**. Every knob, selector
-and switch is a filmstrip cut from renders of CA-72's own panel, so it looks and turns as it does there. The STEREO
-tab's field shows where the sounding voices sit, live.
+Five tabs, drawn for the MPC's 1280 x 628 plugin area from CA-72's own pictures and typeface (`skin/`), each with its own
+Q-Link bank: **OSCILLATORS** (controllers, oscillator bank), **MIXER** (the oscillators', external input's and noise's
+levels and switches, then OUTPUT: VOLUME, MAIN OUTPUT, QUALITY, FEEDBACK, PATCH, A-440, BASS COMP), **MODIFIERS** (filter,
+contours and the left-hand controller with its wheel), **PERFORM** (MODE, VOICES, ENTROPY, DRIVE, LEVEL, AUTO GAIN, BEND
+RANGE) and **STEREO**. The wood, panel face and silver ends are the same on every tab, so they read as one panel continuing.
+Every knob, selector and switch is a filmstrip, so it looks and turns as it does in CA-72. The STEREO tab's field shows where
+the sounding voices sit, live.
 
 ## What plays
 
@@ -67,7 +70,7 @@ Needs Docker and a checkout of mpc-vst-plugins next to this repo (or `MPC_VST=`)
 
     vst/build.sh                                                  # engine, plugin, skin, presets -> vst/build/
     $MPC_VST/tools/test_port.sh vst/vst.json                      # offline host test (ASan)
-    (cd skin && cargo run --release -- ../vst)                    # redraw the skin art (committed in vst/art/)
+    tools/make_skin.sh                                            # redraw the skin art (committed in vst/art/)
     python3 tools/presets.py json                                 # after editing vst/presets/factory.toml
 
 The engine tests: `cargo test --release -p ca72-mpc` in `engine/` (the `engine/Dockerfile` image has the toolchain).
@@ -78,10 +81,11 @@ The engine tests: `cargo test --release -p ca72-mpc` in `engine/` (the `engine/D
 |---|---|
 | `engine/ca72/` | CA-72's real-time model, vendored; `src/light.rs` is the only file changed (`engine/VENDORED.md`) |
 | `engine/ca72-mpc/` | The MPC engine: voices, MODE, ENTROPY, stereo, AUTO GAIN, the stereo field; fitting and bench examples |
-| `skin/` | Draws the skin art with CA-72's own panel crate (a git dependency) |
+| `skin/` | Draws the skin: CA-72's pictures and typeface, laid out for the MPC (`skin/README.md`) |
 | `vst/` | Plugin definition (`vst.json`, `params.json`), skin layout, art, presets, build script |
 | `tools/` | Parameter table and preset converters |
 
 ## Licence
 
-GPL-3.0-or-later, as CA-72 is (`LICENSE`). Model-72 contains CA-72's source and, through the skin tool, its panel art.
+GPL-3.0-or-later, as CA-72 is (`LICENSE`). Model-72 contains CA-72's source and its pictures; the lettering is URW Gothic
+(AGPL-3.0 with a font exception, `skin/assets/URW-LICENSE`).
