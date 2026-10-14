@@ -61,15 +61,17 @@ def toggle2(t, key, cx, cy, w, off, on, rot=0, pad=10):
     t.controls.append(dict(kind="pair", key=key, cx=cx, cy=cy, w=cw, h=ch, draw=lambda st: sn if st else so))
 
 
-def rocker(t, key, cx, cy, color, w=88, vertical=False, name=None, invert=False, pad=10):
+def rocker(t, key, cx, cy, color, w=88, vertical=False, name=None, invert=False, pad=4):
     spr = lambda st: m.rocker_img(color, (not st) if invert else st, w, vertical)
     sp = spr(1)
+    gp = 9                                              # the glow margin the picture carries
+    capw, caph = sp.width / SS - 2 * gp, sp.height / SS - 2 * gp
     cw, ch = m.even(sp.width / SS) + 2 * pad, m.even(sp.height / SS) + 2 * pad
-    t.hi.alpha_composite(m.shadow(t.hi.size, ((cx - sp.width / SS / 2) * SS, (cy - sp.height / SS / 2) * SS, (cx + sp.width / SS / 2) * SS, (cy + sp.height / SS / 2) * SS), 3, 120, (0, 2), False))
+    t.hi.alpha_composite(m.shadow(t.hi.size, ((cx - capw / 2) * SS, (cy - caph / 2) * SS, (cx + capw / 2) * SS, (cy + caph / 2) * SS), 3, 120, (0, 2), False))
     t.controls.append(dict(kind="pair", key=key, cx=cx, cy=cy, w=cw, h=ch, draw=spr))
     if name:
         for i, ln in enumerate(name.split("\n")[::-1]):
-            t.text(cx, cy - sp.height / SS / 2 - 13 - i * 15, ln, 14, True, INK)
+            t.text(cx, cy - caph / 2 - 13 - i * 15, ln, 14, True, INK)
 
 
 # ------------------------------------------------------------------------------------------------ 1
@@ -105,35 +107,125 @@ def oscillators(params, out):
 # ------------------------------------------------------------------------------------------------ 2
 
 def mixer(params, out):
-    t = Tab("MIXER", ["osc1_volume", "osc2_volume", "osc3_volume", "ext_volume", "noise_volume", "volume", "feedback", "osc1_on", "osc2_on",
-                      "osc3_on", "ext_on", "noise_on", "main_output", "a440", "bass_comp", "quality"])
-    t.rule(700)
-    t.title(350, "MIXER")
-    t.title(983, "OUTPUT")
+    """The mixer on the left (each knob beside its rocker, the outer knobs the same distance either side) and the FILTER on the right."""
+    t = Tab("MIXER FILTER", ["osc1_volume", "osc2_volume", "osc3_volume", "ext_volume", "noise_volume", "cutoff", "emphasis", "contour_amount",
+                             "filter_attack", "filter_decay", "filter_sustain", "filter_mode", "filter_mod", "keyboard_control_1",
+                             "keyboard_control_2", "bass_comp"])
+    t.rule(585)
+    t.title(300, "MIXER")
+    t.title(935, "FILTER")
     rows = [134, 224, 314, 404, 494]
+    rx, kl, kr = 292, 108, 476                      # rockers' column; left and right knobs the same 184 px off it
     for i, key in ((0, "osc1"), (2, "osc2"), (4, "osc3")):
-        K(t, key + "_volume", 118, rows[i], 38, "ten", "OSC. %s VOLUME" % key[-1])
-        t.line(118 + 36 + 22, rows[i], 300 - 48, rows[i], 2.4)
+        K(t, key + "_volume", kl, rows[i], 38, "ten", "OSC. %s VOLUME" % key[-1])
+        t.line(kl + 36 + 22, rows[i], rx - 48, rows[i], 2.4)
     for i, key, nm in ((1, "ext", "EXTERNAL INPUT\nVOLUME"), (3, "noise", "NOISE VOLUME")):
-        K(t, key + "_volume", 520, rows[i], 36, "ten", nm)
-        t.line(300 + 48, rows[i], 520 - 36 - 22, rows[i], 2.4)
+        K(t, key + "_volume", kr, rows[i], 36, "ten", nm)
+        t.line(rx + 48, rows[i], kr - 36 - 22, rows[i], 2.4)
     for i, key in enumerate(["osc1_on", "ext_on", "osc2_on", "noise_on", "osc3_on"]):
-        rocker(t, key, 300, rows[i], "blue", 88)
-        on_legend(t, 300, rows[i])
-    t.text(655, rows[3] - 62, "WHITE", 12, True, INK)
-    rocker(t, "noise_type", 655, rows[3], "blue", 88, vertical=True, invert=True)
-    t.text(655, rows[3] + 62, "PINK", 12, True, INK)
+        rocker(t, key, rx, rows[i], "blue", 88)
+        on_legend(t, rx, rows[i])
+    # noise colour: a horizontal rocker under the noise knob
+    ny = rows[4] + 16
+    t.text(kr - 66, ny, "WHITE", 12, True, INK, "rm")
+    rocker(t, "noise_type", kr, ny, "blue", 88, invert=True)
+    t.text(kr + 66, ny, "PINK", 12, True, INK, "lm")
+    # FILTER: switches in a column at the left, the six knobs beside them
+    cx0 = 650
+    rocker(t, "filter_mode", cx0, 122, "orange", 88, name="FILTER\nMODE")
+    t.text(cx0 - 28, 122 + 30, "LO", 12, True, INK)
+    t.text(cx0 + 28, 122 + 30, "HI", 12, True, INK)
+    rocker(t, "filter_mod", cx0, 232, "orange", 88, name="FILTER\nMODULATION")
+    on_legend(t, cx0, 232)
+    t.text(cx0, 308, "KEYBOARD", 14, True, INK)
+    t.text(cx0, 324, "CONTROL", 14, True, INK)
+    rocker(t, "keyboard_control_1", cx0, 358, "orange", 88)
+    rocker(t, "keyboard_control_2", cx0, 418, "orange", 88)
+    t.text(cx0 - 58, 358, "1", 14, True, INK)
+    t.text(cx0 - 58, 418, "2", 14, True, INK)
+    on_legend(t, cx0, 418)
+    rocker(t, "bass_comp", cx0, 508, "blue", 88, name="BASS COMP")
+    on_legend(t, cx0, 508)
+    cols = [820, 985, 1150]
+    for x, key, spec, nm in zip(cols, ["cutoff", "emphasis", "contour_amount"], ["cutoff", "ten", "ten"], ["CUTOFF FREQUENCY", "EMPHASIS", "AMOUNT OF CONTOUR"]):
+        K(t, key, x, 165, 42, spec, nm)
+    for x, key, spec, nm in zip(cols, ["filter_attack", "filter_decay", "filter_sustain"], ["time", "time", "ten"], ["ATTACK TIME", "DECAY TIME", "SUSTAIN LEVEL"]):
+        K(t, key, x, 372, 42, spec, nm)
+    return t
+
+
+# ------------------------------------------------------------------------------------------------ 3
+
+def modifiers(params, out):
+    t = Tab("MODIFIERS", ["loudness_attack", "loudness_decay", "loudness_sustain", "mod_wheel", "note_priority", "retrigger", "glide_on", "decay_on"])
+    t.rule(560)
+    t.title(280, "MODIFIERS")
+    t.title(920, "CONTROLLER")
+    t.text(280, 66, "LOUDNESS CONTOUR", 22, True, INK)
+    t.text(920, 66, "LEFT HAND", 22, True, INK)
+    for x, key, spec, nm in zip([115, 280, 445], ["loudness_attack", "loudness_decay", "loudness_sustain"], ["time", "time", "ten"], ["ATTACK TIME", "DECAY TIME", "SUSTAIN LEVEL"]):
+        K(t, key, x, 310, 54, spec, nm, ring=74)
+    # left-hand controller
+    t.text(690, 165, "PRIORITY", 14, True, INK, "mm")
+    t.text(850, 102, "LAST", 13, True, INK)
+    t.text(762, 186, "LOW", 13, True, INK)
+    t.text(938, 186, "HIGH", 13, True, INK)
+    py = 165
+
+    def prio(tab, lit):
+        tab.put(m.lever_sprite({0: -1, 1: 0, 2: 1}[1 if lit < 0 else lit]), 850, py)
+
+    t.controls.append(dict(kind="options", key="note_priority", cx=850, cy=py, w=200, h=120, n=3, lit=prio, sw=66, sh=110))
+    for y, key, nm in ((280, "retrigger", "RETRIGGER"), (355, "glide_on", "GLIDE"), (430, "decay_on", "DECAY")):
+        rocker(t, key, 850, y, "ivory", 76)
+        t.text(795, y, nm, 13, True, INK, "rm")
+        on_legend(t, 850, y, 76)
+    m.jack(t, 640, 355)
+    m.jack(t, 640, 430)
+    # the wheels
+    pw = m.wheel_sprite(70, 300, 0.5)
+    t.put(pw, 1060, 330)
+    t.text(1060, 330 + 164, "PITCH", 13, True, INK)
+    t.controls.append(dict(kind="wheel", key="mod_wheel", cx=1165, cy=330, w=70, h=300))
+    t.text(1165, 330 + 164, "MOD.", 13, True, INK)
+    return t
+
+
+# ------------------------------------------------------------------------------------------------ 4
+
+def perform(params, out):
+    t = Tab("PERFORM", ["voices", "entropy", "drive", "level", "volume", "feedback", "midi_bend_range", "mode", "auto_gain", "quality",
+                        "main_output", "a440", "patch"])
+    t.rule(420)
+    t.rule(860)
+    t.title(210, "VOICES")
+    t.title(640, "PERFORM")
+    t.title(1070, "OUTPUT")
+    # VOICES
+    bank(t, "mode", 210, 100, ["MONO", "POLY", "UNISON"], w=112, name="MODE")
+    K(t, "voices", 110, 275, 46, "voices", "VOICES", vs=0, ring=70)
+    K(t, "entropy", 310, 275, 46, "ten", "ENTROPY", vs=0, ring=70)
+    t.text(210, 392, "QUALITY", 14, True, INK)
+    toggle2(t, "quality", 210, 450, 54, "down", "mid")
+    t.text(150, 442, "HI", 12, True, INK, "rm")
+    t.text(270, 442, "LO", 12, True, INK, "lm")
+    # PERFORM: auto gain, drive, level
+    t.text(580, 48, "AUTO GAIN", 14, True, INK)
+    sp = lambda st: tab_sprite(120, 44, "ON", bool(st))
+    t.controls.append(dict(kind="pair", key="auto_gain", cx=580, cy=100, w=144, h=68, draw=sp))
+    readout(t, "auto_db", 740, 100, w=110, h=48, unit="dB")
+    K(t, "drive", 540, 275, 46, "drive", "DRIVE", vs=0, ring=70)
+    K(t, "level", 740, 275, 46, "level", "LEVEL", vs=0, ring=70)
+    readout(t, "drive", 540, 440, w=110, h=48, unit="dB", tsize=26)
+    readout(t, "level", 740, 440, w=110, h=48, unit="dB", tsize=26)
     # OUTPUT
-    K(t, "volume", 800, 150, 36, "ten", "VOLUME")
-    rocker(t, "main_output", 975, 150, "blue", 88, name="MAIN OUTPUT")
-    on_legend(t, 975, 150)
-    t.text(1150, 90, "QUALITY", 14, True, INK)
-    toggle2(t, "quality", 1150, 150, 54, "down", "mid")
-    t.text(1100, 143, "HI", 12, True, INK)
-    t.text(1150, 205, "LO", 12, True, INK)
-    K(t, "feedback", 800, 345, 36, "ten", "FEEDBACK")
-    # PATCH: a cable from the output into EXTERNAL INPUT, plugged at the jack
-    t.text(975, 290, "PATCH", 14, True, INK)
+    rocker(t, "main_output", 960, 100, "blue", 88, name="MAIN OUTPUT")
+    on_legend(t, 960, 100)
+    rocker(t, "a440", 1180, 100, "blue", 88, name="A-440")
+    on_legend(t, 1180, 100)
+    K(t, "volume", 960, 275, 42, "ten", "VOLUME", vs=0, ring=66)
+    K(t, "feedback", 1180, 275, 42, "ten", "FEEDBACK", vs=0, ring=66)
+    t.text(960, 395, "PATCH", 14, True, INK)
     jk = m.asset("jack").resize((44 * SS, 44 * SS), m.Image.LANCZOS)
 
     def patch(st):
@@ -144,99 +236,9 @@ def mixer(params, out):
         im.alpha_composite(lamp, (62 * SS, 6 * SS))
         return im
 
-    t.controls.append(dict(kind="pair", key="patch", cx=975, cy=345, w=86, h=86, draw=patch))
-    t.text(975, 392, "OUTPUT > EXT. INPUT", 11, True, m.DIM)
-    rocker(t, "a440", 1140, 330, "blue", 88, name="A-440")
-    on_legend(t, 1140, 330)
-    rocker(t, "bass_comp", 1140, 440, "blue", 88, name="BASS COMP")
-    on_legend(t, 1140, 440)
-    return t
-
-
-# ------------------------------------------------------------------------------------------------ 3
-
-def modifiers(params, out):
-    t = Tab("MODIFIERS", ["cutoff", "emphasis", "contour_amount", "filter_attack", "filter_decay", "filter_sustain", "loudness_attack",
-                          "loudness_decay", "loudness_sustain", "mod_wheel", "filter_mode", "filter_mod", "keyboard_control_1",
-                          "keyboard_control_2", "note_priority", "retrigger"])
-    t.rule(795)
-    t.title(420, "MODIFIERS")
-    t.title(1030, "CONTROLLER")
-    t.text(1030, 44, "LEFT HAND", 22, True, INK)
-    rocker(t, "filter_mode", 80, 128, "orange", 88, name="FILTER\nMODE")
-    t.text(52, 128 + 30, "LO", 12, True, INK)
-    t.text(108, 128 + 30, "HI", 12, True, INK)
-    rocker(t, "filter_mod", 80, 245, "orange", 88, name="FILTER\nMODULATION")
-    on_legend(t, 80, 245)
-    t.text(80, 322, "KEYBOARD", 14, True, INK)
-    t.text(80, 338, "CONTROL", 14, True, INK)
-    rocker(t, "keyboard_control_1", 80, 375, "orange", 88)
-    rocker(t, "keyboard_control_2", 80, 440, "orange", 88)
-    t.text(22, 375, "1", 14, True, INK)
-    t.text(22, 440, "2", 14, True, INK)
-    on_legend(t, 80, 440)
-    t.text(450, 44, "FILTER", 22, True, INK)
-    cols = [255, 435, 615]
-    for x, key, spec, nm in zip(cols, ["cutoff", "emphasis", "contour_amount"], ["cutoff", "ten", "ten"], ["CUTOFF FREQUENCY", "EMPHASIS", "AMOUNT OF CONTOUR"]):
-        K(t, key, x, 142, 38, spec, nm)
-    for x, key, spec, nm in zip(cols, ["filter_attack", "filter_decay", "filter_sustain"], ["time", "time", "ten"], ["ATTACK TIME", "DECAY TIME", "SUSTAIN LEVEL"]):
-        K(t, key, x, 284, 38, spec, nm)
-    t.hrule(190, 700, 353)
-    t.text(450, 366, "LOUDNESS CONTOUR", 18, True, INK)
-    for x, key, spec, nm in zip(cols, ["loudness_attack", "loudness_decay", "loudness_sustain"], ["time", "time", "ten"], ["ATTACK TIME", "DECAY TIME", "SUSTAIN LEVEL"]):
-        K(t, key, x, 464, 38, spec, nm)
-    # left-hand controller
-    t.text(870, 100, "PRIORITY", 14, True, INK, "mm")
-    pr = [("down", -90), ("mid", 0), ("up", -90)]
-
-    def prio(tab, lit):
-        i = 1 if lit < 0 else lit
-        which, rot = pr[i]
-        tab.put(m.toggle_sprite(which, 52, rot), 985, 100)
-
-    prio(t, -1)
-    t.text(985, 62, "LAST", 11, True, INK)
-    t.text(930, 112, "LOW", 11, True, INK)
-    t.text(1040, 112, "HIGH", 11, True, INK)
-    t.controls.append(dict(kind="options", key="note_priority", cx=985, cy=100, w=132, h=70, n=3, lit=prio, sw=44, sh=60))
-    for y, key, nm in ((190, "retrigger", "RETRIGGER"), (270, "glide_on", "GLIDE"), (350, "decay_on", "DECAY")):
-        rocker(t, key, 985, y, "ivory", 76)
-        t.text(930, y, nm, 13, True, INK, "rm")
-        on_legend(t, 985, y, 76)
-    m.jack(t, 825, 270)
-    m.jack(t, 825, 350)
-    # the wheels
-    pw = m.wheel_sprite(64, 220, 0.5)
-    t.put(pw, 1115, 400)
-    t.text(1115, 400 + 124, "PITCH", 13, True, INK)
-    t.controls.append(dict(kind="wheel", key="mod_wheel", cx=1200, cy=400, w=64, h=220))
-    t.text(1200, 400 + 124, "MOD.", 13, True, INK)
-    return t
-
-
-# ------------------------------------------------------------------------------------------------ 4
-
-def perform(params, out):
-    t = Tab("PERFORM", ["voices", "entropy", "drive", "level", "midi_bend_range", "mode", "auto_gain"])
-    t.rule(620)
-    t.title(310, "VOICES")
-    t.title(943, "OUTPUT")
-    bank(t, "mode", 310, 92, ["MONO", "POLY", "UNISON"], name="MODE")
-    K(t, "voices", 200, 255, 46, "voices", "VOICES", vs=0, ring=70)
-    readout(t, "voices", 365, 255)
-    K(t, "entropy", 200, 440, 46, "ten", "ENTROPY", vs=0, ring=70)
-    readout(t, "entropy", 365, 440)
-    # AUTO GAIN
-    t.text(775, 48, "AUTO GAIN", 14, True, INK)
-    sp = lambda st: tab_sprite(120, 44, "ON", bool(st))
-    t.controls.append(dict(kind="pair", key="auto_gain", cx=775, cy=92, w=144, h=68, draw=sp))
-    readout(t, "auto_db", 945, 92, unit="dB")
-    K(t, "drive", 775, 255, 46, "drive", "DRIVE", vs=0, ring=70)
-    readout(t, "drive", 945, 255, unit="dB")
-    K(t, "level", 775, 440, 46, "level", "LEVEL", vs=0, ring=70)
-    readout(t, "level", 945, 440, unit="dB")
-    K(t, "midi_bend_range", 1160, 255, 46, "bend", "MIDI BEND RANGE", vs=0, ring=70)
-    readout(t, "midi_bend_range", 1160, 355, w=100, h=48, unit="st")
+    t.controls.append(dict(kind="pair", key="patch", cx=960, cy=450, w=86, h=86, draw=patch))
+    t.text(960, 505, "OUTPUT > EXT. INPUT", 11, True, m.DIM)
+    K(t, "midi_bend_range", 1180, 450, 42, "bend", "MIDI BEND RANGE", vs=0, ring=66)
     return t
 
 

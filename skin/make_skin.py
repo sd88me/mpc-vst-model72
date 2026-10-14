@@ -14,7 +14,7 @@ import os
 import random
 import sys
 
-from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont, ImageOps
+from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 A = os.path.join(HERE, "assets")
@@ -58,24 +58,33 @@ _cache = {}
 
 
 def face_panel(w, h):
-    """The panel's black textured face, tiled (mirrored, so no seams) over w x h (hi-res pixels)."""
+    """The panel's black textured face: the picture's lighting is flattened out (it has none worth keeping and its
+    gradients showed as seams), darkened, made to tile without a join, and laid in plain (unmirrored) tiles."""
     if "face" not in _cache:
-        f = asset("face", "L")
-        ts = 640
-        f = f.resize((ts, ts), Image.LANCZOS)
-        r, g, b = [f.point(lambda v, m=m: min(255, int(v * m * 1.22))) for m in (1.04, 1.0, 0.93)]
-        _cache["face"] = Image.merge("RGB", (r, g, b))
+        ts = 512
+        f = asset("face", "L").resize((ts, ts), Image.LANCZOS)
+        low = f.filter(ImageFilter.GaussianBlur(40))
+        d = ImageChops.subtract(ImageChops.add(f, Image.new("L", f.size, 128)), low)       # grain around mid grey
+        d = d.point(lambda v: max(0, min(255, int(22 + (v - 128) * 0.95))))
+        # tileable: cross-fade the picture with itself shifted by half a tile, weighted by distance from the middle
+        sh = ImageChops.offset(d, ts // 2, ts // 2)
+        wx = Image.new("L", (ts, ts))
+        for x in range(ts):
+            u = x / ts
+            v = int(255 * (0.5 - 0.5 * math.cos(2 * math.pi * u)))
+            wx.paste(v, (x, 0, x + 1, ts))
+        wy = wx.rotate(90)
+        mask = ImageChops.multiply(wx, wy)
+        # (the centre keeps the shifted copy's seam-free middle, the edges the original: both are continuous across a tile edge)
+        t = Image.composite(d, sh, mask)
+        r, g, bb = [t.point(lambda v, m=m: min(255, int(v * m))) for m in (1.04, 1.0, 0.94)]
+        _cache["face"] = Image.merge("RGB", (r, g, bb))
     f = _cache["face"]
     ts = f.width
     out = Image.new("RGB", (w, h))
     for iy in range(0, h // ts + 1):
         for ix in range(0, w // ts + 1):
-            t = f
-            if ix & 1:
-                t = ImageOps.mirror(t)
-            if iy & 1:
-                t = ImageOps.flip(t)
-            out.paste(t, (ix * ts, iy * ts))
+            out.paste(f, (ix * ts, iy * ts))
     return out
 
 
@@ -454,20 +463,24 @@ def render_controls(t, out, params, preview):
             out.add('enum_h cx=%d cy=%d label="" key=%s options="%s" sw=%d sh=%d img=art/clear.png img_on=art/clear.png' %
                     (c["cx"], c["cy"] + Y_OFF, key, ",".join([" "] * c["n"]), c["sw"], c["sh"]))
         elif k == "field":
+            # the voices' dots: each of the ten meters draws one dot, on a clear picture over the glass (frame 0 is empty)
             w, h, n = c["w"], c["h"], 49
             frames = []
             for i in range(n):
-                bgc = crop_hi(t, c["cx"], c["cy"], w, h)
+                fr = Image.new("RGBA", (w * SS, h * SS), (0, 0, 0, 0))
                 if i:
                     at = (i / (n - 1) - 0.02) / 0.98
                     cxd = (14 + max(0.0, min(1.0, at)) * (w - 28)) * SS
                     cyd = h * SS / 2
-                    glow = Image.new("RGBA", bgc.size, (0, 0, 0, 0))
+                    glow = Image.new("RGBA", fr.size, (0, 0, 0, 0))
                     ImageDraw.Draw(glow).ellipse((cxd - 17 * SS, cyd - 17 * SS, cxd + 17 * SS, cyd + 17 * SS), fill=(232, 110, 40, 150))
-                    bgc.alpha_composite(glow.filter(ImageFilter.GaussianBlur(7 * SS)))
-                    ImageDraw.Draw(bgc).ellipse((cxd - 9 * SS, cyd - 9 * SS, cxd + 9 * SS, cyd + 9 * SS), fill=(255, 150, 70, 255))
-                frames.append(to_rgb_final(bgc, w, h))
-            out.save(strip_from(frames, w, h), "field.png")
+                    fr.alpha_composite(glow.filter(ImageFilter.GaussianBlur(7 * SS)))
+                    ImageDraw.Draw(fr).ellipse((cxd - 9 * SS, cyd - 9 * SS, cxd + 9 * SS, cyd + 9 * SS), fill=(255, 150, 70, 255))
+                frames.append(fr.resize((w, h), Image.LANCZOS))
+            strip = Image.new("RGBA", (w, h * n), (0, 0, 0, 0))
+            for i, f in enumerate(frames):
+                strip.paste(f, (0, i * h))
+            out.save(strip, "field.png")
             for j in range(1, 11):
                 out.add('meter cx=%d cy=%d w=%d h=%d key=dot_%d strip=art/field.png frames=%d' % (c["cx"], c["cy"] + Y_OFF, w, h, j, n))
         elif k == "readout":
@@ -479,7 +492,7 @@ def render_controls(t, out, params, preview):
     if t.name == "OSCILLATORS":
         # the Instruments browser's tile: the oscillator bank, halved
         final_bg.crop((420, 40, 960, 260)).resize((270, 110), Image.LANCZOS).save(os.path.join(out.art, "tile.png"))
-    final_bg.save(os.path.join(out.art, t.name.lower() + ".png"), optimize=True)
+    final_bg.save(os.path.join(out.art, t.name.lower().replace(" ", "_") + ".png"), optimize=True)
 
 
 def wheel_sprite(w, h, v):
@@ -519,16 +532,38 @@ def wheel_sprite(w, h, v):
 
 # rocker images
 def rocker_img(color, on, w, vertical=False, flip_vertical_on=True):
+    """On: the picture bright and saturated with a glow; off: the same cap sunk dark and dull, so the state reads at a glance."""
     base = asset("rocker-orange" if color == "orange" else "rocker-blue")
     if color == "ivory":
         base = tint_ivory(asset("rocker-blue"))
     base = base.resize((w * SS, max(1, round(base.height * w * SS / base.width))), Image.LANCZOS)
     if not on:
         base = ImageOps.mirror(base)
+    a = base.getchannel("A")
+    rgb = base.convert("RGB")
+    if on:
+        rgb = ImageEnhance.Color(rgb).enhance(1.25)
+        rgb = ImageEnhance.Brightness(rgb).enhance(1.18)
+    else:
+        rgb = ImageEnhance.Color(rgb).enhance(0.45)
+        rgb = ImageEnhance.Brightness(rgb).enhance(0.36)
+    cap = rgb.copy()
+    cap.putalpha(a)
+    pad = 9 * SS
+    im = Image.new("RGBA", (cap.width + 2 * pad, cap.height + 2 * pad), (0, 0, 0, 0))
+    if on and color != "ivory":
+        glow_c = (255, 120, 40) if color == "orange" else (70, 150, 255)
+        gl = Image.new("RGBA", im.size, glow_c + (0,))
+        ga = Image.new("L", im.size, 0)
+        ga.paste(a.point(lambda v: v * 170 // 255), (pad, pad))
+        gl.putalpha(ga.filter(ImageFilter.GaussianBlur(5 * SS)))
+        im.alpha_composite(gl)
+    im.alpha_composite(cap, (pad, pad))
+    if not on:
+        ImageDraw.Draw(im).rounded_rectangle((pad, pad, pad + cap.width - 1, pad + cap.height - 1), radius=4 * SS, outline=(0, 0, 0, 200), width=SS)
     if vertical:
-        # right half raised -> top raised when on
-        base = base.rotate(90, expand=True)
-    return base
+        im = im.rotate(90, expand=True)
+    return im
 
 
 def add_rocker(t, key, cx, cy, color, w=88, vertical=False, name=None, pad=10):
@@ -547,6 +582,30 @@ def jack(t, cx, cy, d=40):
     im = asset("jack").resize((d * SS, d * SS), Image.LANCZOS)
     t.hi.alpha_composite(shadow(t.hi.size, ((cx - d / 2) * SS, (cy - d / 2) * SS, (cx + d / 2) * SS, (cy + d / 2) * SS), 3, 130))
     t.put(im, cx, cy)
+
+
+def lever_sprite(pos, size=120):
+    """A three-way toggle seen from the front: a chrome bushing with its lever thrown left (-1), up (0) or right (1).
+    Drawn on one fixed footprint so every position sits on the same bushing."""
+    S = size * SS
+    im = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    cx = cy = S / 2
+    px, py = cx, cy + 12 * SS          # the pivot sits a little low so an upright lever has room
+    # bushing: a dark well, a chrome ring and a nut
+    d = ImageDraw.Draw(im)
+    for r, col in ((27, (10, 10, 10)), (24, (150, 150, 150)), (21.5, (60, 60, 60)), (19, (210, 210, 210)), (14, (120, 120, 120))):
+        d.ellipse((px - r * SS, py - r * SS, px + r * SS, py + r * SS), fill=col + (255,))
+    ang = {-1: -58, 0: 0, 1: 58}[pos]
+    L = 46 * SS
+    tx, ty = px + L * math.sin(math.radians(ang)), py - L * math.cos(math.radians(ang))
+    nx, ny = math.cos(math.radians(ang)), math.sin(math.radians(ang))
+    # lever: a tapered bar with a dark edge and a bright core, then a ball tip
+    for wd, col in ((14, (20, 20, 20)), (11, (130, 130, 130)), (7.5, (214, 214, 214)), (3, (255, 255, 255))):
+        w0, w1 = wd * SS * 0.5, wd * SS * 0.3
+        d.polygon([(px + nx * w0, py + ny * w0), (tx + nx * w1, ty + ny * w1), (tx - nx * w1, ty - ny * w1), (px - nx * w0, py - ny * w0)], fill=col + (255,))
+    for r, col in ((12, (20, 20, 20)), (10.5, (150, 150, 150)), (8, (225, 225, 225)), (4, (255, 255, 255))):
+        d.ellipse((tx - r * SS, ty - r * SS - (1.5 if r < 8 else 0) * SS, tx + r * SS, ty + r * SS - (1.5 if r < 8 else 0) * SS), fill=col + (255,))
+    return im
 
 
 def toggle_sprite(which, w, rot=0):
@@ -576,7 +635,7 @@ def build(root):
 
 
 def render_controls_with_lines(t, out, params, preview):
-    out.add("\n[tab %s]\nart file=art/%s.png fit=stretch" % (t.name, t.name.lower()))
+    out.add("\n[tab %s]\nart file=art/%s.png fit=stretch" % (t.name, t.name.lower().replace(" ", "_")))
     render_controls(t, out, params, preview)
     for l in t.lines:
         out.add(l)

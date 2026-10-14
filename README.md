@@ -15,7 +15,7 @@ Status: running on a Force; sounds right, skin being finished. Not yet tested on
 
 | | |
 |---|---|
-| ![OSCILLATORS](docs/img/oscillators.png) | ![MIXER](docs/img/mixer.png) |
+| ![OSCILLATORS](docs/img/oscillators.png) | ![MIXER FILTER](docs/img/mixer_filter.png) |
 | ![MODIFIERS](docs/img/modifiers.png) | ![PERFORM](docs/img/perform.png) |
 | ![STEREO](docs/img/stereo.png) | |
 
