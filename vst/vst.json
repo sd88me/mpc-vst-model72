@@ -1,0 +1,31 @@
+{
+  "name": "Model-72",
+  "vendor": "sd88me",
+  "uid": "M072",
+  "version": 1000,
+  "so": "model72.so",
+  "params": "params.json",
+  "build": {
+    "root": "..",
+    "sources": [
+      "vst/engine.c"
+    ],
+    "libs": [
+      "-Lvst/build/rust/armv7",
+      "-Lvst/build/rust/x86_64",
+      "-lca72_mpc",
+      "-Wl,--exclude-libs,ALL",
+      "-ldl",
+      "-lm"
+    ]
+  },
+  "layout": "layout.conf",
+  "art": "html",
+  "presets": "presets.json",
+  "skin_post": "skin_post.py",
+  "tile": "art/tile.png",
+  "defines": {
+    "HAS_DISPLAY_REV": 1,
+    "DISPLAY_REV_NO_UPDATE": 1
+  }
+}

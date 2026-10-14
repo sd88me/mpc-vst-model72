@@ -1,0 +1,15 @@
+[package]
+name = "ca72-skin"
+description = "Draws the MPC skin's art (backgrounds, knob and switch filmstrips) with upstream's own panel renderer"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+publish = false
+
+[dependencies]
+# Upstream's panel, at the commit the engine is vendored from (engine/VENDORED.md).
+ca72-panel = { git = "https://github.com/idlefoundry/ca-72", rev = "3f990769036481210c8a0d8e53d480e9661827e7" }
+resvg = { version = "0.45", default-features = false }
+
+[profile.release]
+opt-level = 3
