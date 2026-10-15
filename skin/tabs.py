@@ -180,26 +180,28 @@ def perform(params, out):
                        "retrigger", "glide_on", "decay_on", "mod_wheel"])
     t.rule(340)
     t.rule(720)
-    t.title(170, "VOICES")
-    t.title(530, "OUTPUT")
-    t.title(1010, "CONTROLLER")
-    # VOICES
-    bank(t, "mode", 170, 100, ["MONO", "POLY", "UNISON"], w=100, gap=6, name="MODE")
-    K(t, "voices", 85, 265, 42, "voices", "VOICES", vs=0, ring=64)
-    K(t, "entropy", 255, 265, 42, "ten", "ENTROPY", vs=0, ring=64)
-    t.text(170, 380, "QUALITY", 14, True, INK)
-    t.text(170, 408, "HI", 12, True, INK)
-    toggle2(t, "quality", 170, 462, 54, "down", "mid")
-    t.text(170, 516, "LO", 12, True, INK)
-    # OUTPUT
-    K(t, "drive", 430, 190, 46, "drive", "FILTER DRIVE", vs=0, ring=70)
-    K(t, "volume", 430, 420, 46, "ten", "VOLUME", vs=0, ring=70)
-    t.text(615, 100, "AUTO GAIN", 14, True, INK)
+    t.title(170, "OUTPUT")
+    t.title(530, "VOICES")
+    t.title(1000, "CONTROLLER")
+    # OUTPUT (left): FILTER DRIVE then VOLUME, with AUTO GAIN and A-440 beside them
+    K(t, "drive", 100, 190, 46, "drive", "FILTER DRIVE", vs=0, ring=70)
+    K(t, "volume", 100, 420, 46, "ten", "VOLUME", vs=0, ring=70)
+    t.text(250, 100, "AUTO GAIN", 14, True, INK)
     sp = lambda st: tab_sprite(110, 44, "ON", bool(st))
-    t.controls.append(dict(kind="pair", key="auto_gain", cx=615, cy=150, w=134, h=68, draw=sp))
-    readout(t, "auto_db", 615, 225, w=104, h=48, unit="dB", tsize=26)
-    # CONTROLLER
-    cx, py = 880, 135
+    t.controls.append(dict(kind="pair", key="auto_gain", cx=250, cy=150, w=134, h=68, draw=sp))
+    readout(t, "auto_db", 250, 225, w=104, h=48, unit="dB", tsize=26)
+    rocker(t, "a440", 250, 340, "blue", 88, name="A-440")
+    on_legend(t, 250, 340)
+    # VOICES (middle)
+    bank(t, "mode", 530, 100, ["MONO", "POLY", "UNISON"], w=100, gap=6, name="MODE")
+    K(t, "voices", 445, 265, 42, "voices", "VOICES", vs=0, ring=64)
+    K(t, "entropy", 615, 265, 42, "ten", "ENTROPY", vs=0, ring=64)
+    t.text(530, 380, "QUALITY", 14, True, INK)
+    t.text(530, 408, "HI", 12, True, INK)
+    toggle2(t, "quality", 530, 462, 54, "down", "mid")
+    t.text(530, 516, "LO", 12, True, INK)
+    # CONTROLLER (right): the switches at the left, BEND RANGE on top of the two wheels
+    cx, py = 880, 140
     t.text(cx, py - 66, "PRIORITY", 14, True, INK)
     pr = [("down", -90), ("mid", 0), ("up", -90)]
 
@@ -211,17 +213,15 @@ def perform(params, out):
     t.text(cx - 62, py + 14, "LOW", 11, True, INK)
     t.text(cx + 62, py + 14, "HIGH", 11, True, INK)
     t.controls.append(dict(kind="options", key="note_priority", cx=cx, cy=py, w=176, h=80, n=3, lit=prio, sw=58, sh=70))
-    for y, key, nm in ((250, "retrigger", "RETRIGGER"), (330, "glide_on", "GLIDE"), (410, "decay_on", "DECAY")):
+    for y, key, nm in ((290, "retrigger", "RETRIGGER"), (385, "glide_on", "GLIDE"), (480, "decay_on", "DECAY")):
         rocker(t, key, cx, y, "ivory", 84)
         t.text(cx - 52, y, nm, 14, True, INK, "rm")
         on_legend(t, cx, y, 84)
-    rocker(t, "a440", cx, 520, "blue", 88, name="A-440")
-    on_legend(t, cx, 520)
-    t.put(m.wheel_sprite(70, 250, 0.5), 1040, 270)
-    t.text(1040, 270 + 138, "PITCH", 13, True, INK)
-    t.controls.append(dict(kind="wheel", key="mod_wheel", cx=1150, cy=270, w=70, h=250))
-    t.text(1150, 270 + 138, "MOD.", 13, True, INK)
-    K(t, "midi_bend_range", 1095, 497, 34, "bend", "MIDI BEND RANGE", vs=0, ring=52)
+    K(t, "midi_bend_range", 1110, 135, 40, "bend", "MIDI BEND RANGE", vs=0, ring=60)
+    t.put(m.wheel_sprite(84, 310, 0.5), 1050, 365)
+    t.text(1050, 365 + 172, "PITCH", 13, True, INK)
+    t.controls.append(dict(kind="wheel", key="mod_wheel", cx=1175, cy=365, w=84, h=310))
+    t.text(1175, 365 + 172, "MOD.", 13, True, INK)
     return t
 
 
