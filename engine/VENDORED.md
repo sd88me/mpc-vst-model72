@@ -10,8 +10,7 @@ Upstream: https://github.com/idlefoundry/ca-72 at commit `3f990769036481210c8a0d
 | `ca72-mpc/src/stereo.rs` | plugin-kit `crates/plugin-kit-stereo/src/place.rs` @ `4c0f0f3` (github.com/idlefoundry/plugin-kit, GPL-3.0-or-later) | the glide and tests left out. |
 | `../vst/presets/factory.toml` | `crates/ca72-plugin/sounds/presets.toml` | none (converted by `tools/presets.py`). |
 
-The skin's art is drawn at build time by upstream's own `crates/ca72-panel` (a git dependency of `../skin/`, same commit),
-not vendored.
+The skin's pictures (`../skin/assets/`) are copied from upstream's `crates/ca72-panel/assets/worn/`; the skin is drawn by `../skin/make_skin.py`
 
 ## `src/light.rs`
 

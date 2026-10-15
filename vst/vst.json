@@ -3,6 +3,7 @@
   "vendor": "sd88me",
   "uid": "M072",
   "version": 1000,
+  "targets": ["armv7", "aarch64"],
   "so": "model72.so",
   "params": "params.json",
   "build": {
@@ -12,6 +13,7 @@
     ],
     "libs": [
       "-Lvst/build/rust/armv7",
+      "-Lvst/build/rust/aarch64",
       "-Lvst/build/rust/x86_64",
       "-lca72_mpc",
       "-Wl,--exclude-libs,ALL",
