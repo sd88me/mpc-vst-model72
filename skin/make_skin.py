@@ -545,8 +545,8 @@ def rocker_img(color, on, w, vertical=False, flip_vertical_on=True):
         rgb = ImageEnhance.Color(rgb).enhance(1.25)
         rgb = ImageEnhance.Brightness(rgb).enhance(1.18)
     else:
-        rgb = ImageEnhance.Color(rgb).enhance(0.45)
-        rgb = ImageEnhance.Brightness(rgb).enhance(0.36)
+        rgb = ImageEnhance.Color(rgb).enhance(0.75)
+        rgb = ImageEnhance.Brightness(rgb).enhance(0.66)
     cap = rgb.copy()
     cap.putalpha(a)
     pad = 9 * SS
@@ -582,30 +582,6 @@ def jack(t, cx, cy, d=40):
     im = asset("jack").resize((d * SS, d * SS), Image.LANCZOS)
     t.hi.alpha_composite(shadow(t.hi.size, ((cx - d / 2) * SS, (cy - d / 2) * SS, (cx + d / 2) * SS, (cy + d / 2) * SS), 3, 130))
     t.put(im, cx, cy)
-
-
-def lever_sprite(pos, size=120):
-    """A three-way toggle seen from the front: a chrome bushing with its lever thrown left (-1), up (0) or right (1).
-    Drawn on one fixed footprint so every position sits on the same bushing."""
-    S = size * SS
-    im = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    cx = cy = S / 2
-    px, py = cx, cy + 12 * SS          # the pivot sits a little low so an upright lever has room
-    # bushing: a dark well, a chrome ring and a nut
-    d = ImageDraw.Draw(im)
-    for r, col in ((27, (10, 10, 10)), (24, (150, 150, 150)), (21.5, (60, 60, 60)), (19, (210, 210, 210)), (14, (120, 120, 120))):
-        d.ellipse((px - r * SS, py - r * SS, px + r * SS, py + r * SS), fill=col + (255,))
-    ang = {-1: -58, 0: 0, 1: 58}[pos]
-    L = 46 * SS
-    tx, ty = px + L * math.sin(math.radians(ang)), py - L * math.cos(math.radians(ang))
-    nx, ny = math.cos(math.radians(ang)), math.sin(math.radians(ang))
-    # lever: a tapered bar with a dark edge and a bright core, then a ball tip
-    for wd, col in ((14, (20, 20, 20)), (11, (130, 130, 130)), (7.5, (214, 214, 214)), (3, (255, 255, 255))):
-        w0, w1 = wd * SS * 0.5, wd * SS * 0.3
-        d.polygon([(px + nx * w0, py + ny * w0), (tx + nx * w1, ty + ny * w1), (tx - nx * w1, ty - ny * w1), (px - nx * w0, py - ny * w0)], fill=col + (255,))
-    for r, col in ((12, (20, 20, 20)), (10.5, (150, 150, 150)), (8, (225, 225, 225)), (4, (255, 255, 255))):
-        d.ellipse((tx - r * SS, ty - r * SS - (1.5 if r < 8 else 0) * SS, tx + r * SS, ty + r * SS - (1.5 if r < 8 else 0) * SS), fill=col + (255,))
-    return im
 
 
 def toggle_sprite(which, w, rot=0):
