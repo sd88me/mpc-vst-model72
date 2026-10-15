@@ -344,7 +344,7 @@ impl Engine {
             pitch_wheel: (self.bend * share).clamp(-1.0, 1.0),
             mod_wheel: v[p::MOD_WHEEL].max(midi_wheel(self.cc_mod)),
             ext_volume: ten(p::EXT_VOLUME),
-            ext_on: self.on(p::EXT_ON),
+            ext_on: self.on(p::EXT_ON) || self.on(p::PATCH),
             a440: self.on(p::A440),
             tune: v[p::TUNE] / 2.5,
             quality: Quality::Potato,
@@ -377,9 +377,10 @@ impl Engine {
         }
         let panel = self.panel();
         let entropy = (self.vals[p::ENTROPY] / 100.0).clamp(0.0, 1.0);
-        // (FEEDBACK's cable plugged in by PATCH.)
+        // (The output cabled into EXTERNAL INPUT by PATCH: the amount is that input's VOLUME, as on the
+        // instrument, so the cable itself carries all of it. FEEDBACK is no longer a control.)
         let feedback = if self.on(p::PATCH) {
-            ca72::voice::feedback_law(self.vals[p::FEEDBACK] / 10.0)
+            1.0
         } else {
             0.0
         };

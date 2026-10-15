@@ -16,7 +16,7 @@ Status: running on a Force; sounds right, skin being finished. Not yet tested on
 | | |
 |---|---|
 | ![OSCILLATORS](docs/img/oscillators.png) | ![MIXER FILTER](docs/img/mixer_filter.png) |
-| ![CONTROLLER](docs/img/controller.png) | ![OUTPUT](docs/img/output.png) |
+| ![OUTPUT](docs/img/output.png) | ![OUTPUT](docs/img/output.png) |
 | ![STEREO](docs/img/stereo.png) | |
 
 Five tabs, drawn for the MPC's 1280 x 628 plugin area from CA-72's own pictures and typeface (`skin/`), each with its own

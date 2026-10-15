@@ -16,6 +16,20 @@ VST = os.path.join(HERE, "..", "vst")
 IGNORED = {"lock"}
 
 
+EXT = [(0.2, 0.01181), (0.4, 0.02845), (0.5, 0.0371), (0.6, 0.04645), (0.8, 0.50938), (1.0, 1.0)]
+
+
+def ext_taper(p):
+    """R9's taper, as engine/ca72/src/voice.rs has it (below 0.2 a scaled audio taper: p**2 here, close enough)."""
+    p = max(0.0, min(1.0, p))
+    if p <= EXT[0][0]:
+        return EXT[0][1] * (p / EXT[0][0]) ** 2
+    for (pa, ta), (pb, tb) in zip(EXT, EXT[1:]):
+        if p <= pb:
+            return ta * (tb / ta) ** ((p - pa) / (pb - pa))
+    return 1.0
+
+
 def params():
     return json.load(open(os.path.join(VST, "params.json")))["params"]
 
@@ -41,6 +55,16 @@ def presets():
             if k not in keys:
                 sys.exit("preset %r: unknown key %r" % (pr["name"], k))
             v[k] = x
+        if src.get("feedback", 0):
+            # FEEDBACK is gone from the panel: the cable's amount is EXTERNAL INPUT's VOLUME, as on the instrument. Set it
+            # to the gain the old pair made (R9's taper at its volume times FEEDBACK's law), and switch the input on.
+            tgt = ext_taper(v["ext_volume"] / 10) * (src["feedback"] / 10) ** 2.356915448856724
+            lo, hi = 0.0, 1.0
+            for _ in range(40):
+                mid = (lo + hi) / 2
+                lo, hi = (mid, hi) if ext_taper(mid) < tgt else (lo, mid)
+            v["ext_on"] = 1
+            v["ext_volume"] = round(lo * 10, 1)
         out.append((pr["name"], v))
     return out
 
