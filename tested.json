@@ -1,0 +1,9 @@
+[
+ {
+  "version": "1.0.0",
+  "device": "Akai Force",
+  "firmware": "MPC OS 3.9.1",
+  "date": "2026-10-15",
+  "note": "Installed from the release zip with its install.sh, loaded, played and every tab checked. The Gen2 (aarch64) build has only had the offline test."
+ }
+]
