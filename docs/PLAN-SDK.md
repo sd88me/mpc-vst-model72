@@ -17,3 +17,7 @@ hands it to the engine unchanged. `auto_db` and `dot_1..10` are engine readouts:
 
 ## Status log
 - 2026-11-18: phase 1 (repo survey) and phase 2 (identity frozen, plugin.json, param generator, old chunk fixture).
+- 2026-11-18: phase 3. `src/Model72Plugin.cpp` (Profit-5's front end adapted: settle rule, debounced QUALITY, engine readouts pushed,
+  19 factory programs + 64 user presets with a naming keyboard, params 72..117 appended). `tests/run.sh` (ASan/UBSan, real engine): OK,
+  incl. the 1.0.1 chunk, HI's circuit filter, a 48 kHz host. `host_sim`: PASS (19/0/0). arm32 (glibc <= 2.29) + arm64 built with zig,
+  validator clean. Default SDK skin until phase 4.
