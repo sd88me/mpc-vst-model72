@@ -195,14 +195,14 @@ QBLOCKS = {
         ["osc1_waveform", "osc2_waveform", "osc3_waveform"],            # WAVEFORM column
     ]],
     "MIXER FILTER": [[                                                  # sub-tab 1: the filter and the loudness contour
-        ["cutoff", "emphasis", "contour_amount", "filter_mode"],        # cutoff first; FILTER MODE sits in the same row
+        ["filter_mode", "cutoff", "emphasis", "contour_amount"],        # FILTER MODE sits in the cutoff row
         ["filter_attack", "filter_decay", "filter_sustain"],
         ["loudness_attack", "loudness_decay", "loudness_sustain"],
         (["filter_mod", "keyboard_control_1", "keyboard_control_2", "bass_comp"], {"y0": 216}),   # the switch column under it
     ], [                                                                # sub-tab 2: the mixer, column by column
         ["osc1_volume", "osc2_volume", "osc3_volume"],                  # volumes
         ["osc1_on", "ext_on", "osc2_on", "noise_on"],                   # ON switches
-        ["patch", "noise_volume", "noise_type"],                        # PATCH and NOISE (EXT VOLUME: touch only, user 2026-11-18)
+        ["patch", "ext_volume", "noise_volume", "noise_type"],          # PATCH, EXT and NOISE
         ["osc3_on"],                                                    # OSC 3 ON, at the foot of the switches
     ]],
     "OUTPUT": [[
@@ -216,9 +216,6 @@ QBLOCKS = {
         ["played_as", "placement"],
     ]],
 }
-
-
-NO_QLINK = {"ext_volume"}   # controls left off the Q-Links on purpose
 
 
 def qrect(keys, pos, edge=None):
@@ -343,7 +340,7 @@ def main():
                 used.update(b)
             pages.append(Page(name, fn, sub, kids, bgfile, blocks, pos))
     controls = {a["key"] for s in tabs.values() for kind, a in s["items"] if kind in ("knob", "toggle", "enum_h", "slider_v")}
-    missing = controls - used - NO_QLINK
+    missing = controls - used
     if missing:
         raise SystemExit("controls without a Q-Link: %s" % sorted(missing))
     pages.append(presets_page(len(order)))
