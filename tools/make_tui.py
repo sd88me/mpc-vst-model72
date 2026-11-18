@@ -28,6 +28,31 @@ def P(key):
     return "Parameter %d" % LOCK.index(key)
 
 
+# ---- a JSON writer that keeps key order and allows the overlay widget's duplicate "version" key (Welle's) ------------------
+class Obj:
+    """An ordered JSON object that may repeat a key: Obj(("version", 2), ("version", 1), ...)."""
+    def __init__(self, *pairs):
+        self.pairs = list(pairs)
+
+
+def dump(v, ind=0):
+    sp = "  " * ind
+    pairs = v.pairs if isinstance(v, Obj) else list(v.items()) if isinstance(v, dict) else None
+    if pairs is not None:
+        if not pairs:
+            return "{}"
+        return "{\n%s\n%s}" % (",\n".join("%s  %s: %s" % (sp, dump(k), dump(x, ind + 1)) for k, x in pairs), sp)
+    if isinstance(v, list):
+        if not v:
+            return "[]"
+        return "[\n%s\n%s]" % (",\n".join(sp + "  " + dump(x, ind + 1) for x in v), sp)
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    if isinstance(v, (int, float)):
+        return repr(v)
+    return json.dumps(str(v))
+
+
 # ---- TUI.json building blocks (the SDK's schema, as Welle / Acid write it) --------------------------------------------
 def bounds(b, focus="No", visible="Always", invalid="Show", ind=None):
     return {"version": 2, "acceptsHWFocus": focus, "showWhenDataModelInvalid": invalid, "whenVisible": visible,
@@ -70,8 +95,8 @@ KNOB_ACTIONS = [act("Mouse Down", "Q-Link"), act("Double Click", "Show Overlay",
 
 def overlay_def():
     """The MPC's big knob overlay (double tap / Enter on a knob). The released skin lacked it; the SDK pages need it defined."""
-    ov = {"version": 2, "actions": [act("Focus Lost", "Focus Lost", handle="Focus Lost")], "overlayType": "Knob With Header",
-          "scaleType": "Linear", "polarityType": "Unipolar", "showMinusSign": True, "handleName": "Data"}
+    ov = Obj(("version", 2), ("version", 1), ("actions", [act("Focus Lost", "Focus Lost", handle="Focus Lost")]),
+             ("overlayType", "Knob With Header"), ("scaleType", "Linear"), ("polarityType", "Unipolar"), ("showMinusSign", True), ("handleName", "Data"))
     return {"key": "knob overlay", "value": component([entry("overlay", "KnobOverlay", ov, "0 0 1280 800", focus="Yes")], ignore=True)}
 
 
@@ -126,7 +151,7 @@ def widgets(spec, art):
             strip = copy_art(a["strip"])
             name = define("knob_%s" % key, component([
                 entry("Focus", "Focus", NO_FOCUS, "0 0 %d %d" % (bw, ks + 33), visible="WhenFocussed"),
-                entry("Knob", "Knob", {"version": 5, "knobType": "FilmStrip", "filmStrip": strip, "numFrames": g("frames"), "invert": False,
+                entry("Knob", "Knob", {"version": 3, "knobType": "FilmStrip", "filmStrip": strip, "numFrames": g("frames"), "invert": False,
                                        "dragOrientation": "Vertical", "handleName": "Data"}, "%d 0 %d %d" % ((bw - ks) // 2, ks, ks)),
                 value_label("0 %d %d 30" % (ks - 3, bw), vs)], actions=KNOB_ACTIONS))
             x, y = g("cx") - bw // 2, g("cy") - Y_OFF - ks // 2
@@ -168,7 +193,7 @@ def widgets(spec, art):
             w, h = g("w"), g("h")
             name = define("slider_%s" % key, component([
                 entry("Focus", "Focus", NO_FOCUS, "0 0 %d %d" % (w + 46, h + 34), visible="WhenFocussed"),
-                entry("Slider", "Knob", {"version": 5, "knobType": "FilmStrip", "filmStrip": copy_art(a["strip"]), "numFrames": g("frames"),
+                entry("Slider", "Knob", {"version": 3, "knobType": "FilmStrip", "filmStrip": copy_art(a["strip"]), "numFrames": g("frames"),
                                          "invert": False, "dragOrientation": "Vertical", "handleName": "Data"}, "23 0 %d %d" % (w, h)),
                 value_label("0 %d %d 26" % (h + 2, w + 46), g("vs"))], actions=KNOB_ACTIONS))
             kids.append(entry("", name, {"version": 1, "handleName": "Data"}, "%d %d %d %d" % (g("cx") - (w + 46) // 2, g("cy") - Y_OFF - h // 2, w + 46, h + 34),
@@ -177,7 +202,7 @@ def widgets(spec, art):
         elif kind == "meter":     # the STEREO field: one strip per voice dot, read only
             w, h = g("w"), g("h")
             name = define("meter_field", component([
-                entry("Meter", "Knob", {"version": 5, "knobType": "FilmStrip", "filmStrip": copy_art(a["strip"]), "numFrames": g("frames"), "invert": False,
+                entry("Meter", "Knob", {"version": 3, "knobType": "FilmStrip", "filmStrip": copy_art(a["strip"]), "numFrames": g("frames"), "invert": False,
                                         "dragOrientation": "Vertical", "handleName": "Data"}, "0 0 %d %d" % (w, h))], ignore=True))
             kids.append(entry("", name, {"version": 1, "handleName": "Data"}, "%d %d %d %d" % (g("cx") - w // 2, g("cy") - Y_OFF - h // 2, w, h), P(key)))
         else:
@@ -350,7 +375,7 @@ def main():
                         "componentDefinitions": {"version": 2, "importFiles": [],
                                                  "localComponentDefinitions": [overlay_def()] + [{"key": k, "value": v} for k, v in DEFS.items()]},
                         "replacementStrings": [], "info": {"version": 1, "type": "CompleteDescription"}, "tabs": [p.tab() for p in pages]}}
-    json.dump(tui, open(os.path.join(OUT, "TUI.json"), "w"), indent=1)
+    open(os.path.join(OUT, "TUI.json"), "w").write(dump(tui) + "\n")
     json.dump(qlinks_for(pages), open(os.path.join(OUT, "Q-Links.json"), "w"), indent=1)
     print("wrote skins/: %d tabs (%s), %d files" % (len(pages), ", ".join("%s%s" % (p.name, " %d" % (p.sub + 1) if p.sub or p.name == "MIXER FILTER" else "")
                                                                          for p in pages), len(os.listdir(OUT))))
