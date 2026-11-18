@@ -1,0 +1,16 @@
+{
+  "name": "Model-72",
+  "manufacturer": "sd88me",
+  "version": "2.0.0",
+  "kind": "instrument",
+  "uid": "M072",
+  "numInputs": 0,
+  "numOutputs": 2,
+  "category": "Synth",
+  "file32": "VST/model72-arm32.so",
+  "file64": "VST/model72-arm64.so",
+  "description": "A circuit-modelled 1970s monosynth: CA-72's model of the Minimoog Model D, with a light voice (LO) and a hybrid voice that runs the circuit's own ladder filter (HI).",
+  "author": "sd88me",
+  "url": "https://github.com/sd88me/mpc-vst-model72",
+  "license": "GPL-3.0-or-later"
+}
