@@ -25,3 +25,7 @@ hands it to the engine unchanged. `auto_db` and `dot_1..10` are engine readouts:
   skin's geometry: y - 86, knob 2r+10 + value, readout boxes painted in), adds the knob overlay, Q-Links in blocks of four with rectangles
   (MIXER FILTER = 2 sub-tabs: filter, mixer), and a PRESETS tab (+ SAVE / - DELETE, the naming keyboard). `tools/preview_tui.py` -> docs/skin-preview/.
   Validator: 0 errors, 0 warnings.
+- 2026-11-18: phase 5 on the Live III (3.10.x, arm64), beta "Model-72 2 Beta" (M72B) next to 1.0.1. First skin showed no tabs: the knob overlay
+  needs Welle's duplicate "version" key (fixed, 546aca0). User checked: skin, Q-Links, presets with the keyboard; asked for and confirmed
+  QUALITY HI by default on Gen2, presets without QUALITY, a working PITCH wheel (param 118) (61a35a2). "Looks good."
+  Not tested: the Force (arm32, 3.9.1), a real project saved by 1.0.1, save + reload of a 2.0 project on a device, the release identity on a device.
