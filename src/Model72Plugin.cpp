@@ -66,6 +66,27 @@ namespace {
 const int kChunk = 128;
 const int kStateMax = 4096;
 const double kEngineRate = 44100.0;
+// QUALITY for a new instance: HI on Gen2 (arm64, room for the circuit filter), LO on the Force / Gen1 (arm32: HI costs 30-55 % of a core).
+#if defined(__aarch64__)
+const int kDefaultQuality = 1;
+#else
+const int kDefaultQuality = 0;
+#endif
+
+// A preset's sound without its QUALITY: LO / HI is the device's choice, not the sound's (a project keeps its own).
+std::string withoutQuality(const std::string& st)
+{
+    std::string out;
+    size_t a = 0;
+    while (a < st.size())
+    {
+        size_t b = st.find(';', a);
+        if (b == std::string::npos) b = st.size();
+        if (st.compare(a, 8, "quality=") != 0) { if (!out.empty()) out += ';'; out.append(st, a, b - a); }
+        a = b + 1;
+    }
+    return out;
+}
 
 mpc::PluginInfo makeInfo()
 {
@@ -111,6 +132,7 @@ public:
                          : (s.flags & kFloat)  ? mpc::floatParam(s.key, s.name, s.min, s.max, s.def, "", 2)
                                                : mpc::intParam(s.key, s.name, (int)s.min, (int)s.max, (int)s.def);
             p.automatable = !(s.flags & kNoAuto);
+            if (i == 0) p.def = (float)kDefaultQuality;
             addParam(p);
         }
         const size_t n = (size_t)kNumParams;
@@ -130,6 +152,7 @@ public:
         pthread_mutexattr_destroy(&ma);
 
         inst_ = ca72_create();
+        if (inst_ && kDefaultQuality) ca72_set_param(inst_, "quality", "1");   // Gen2 (arm64) starts in HI
         for (int i = 0; i < kFactory; ++i) addProgram(g_factory[i].name, {});
         for (int i = 0; i < kFavSlots; ++i) addProgram("", {});
         // (Not mpc::contentPath(): a function-local static std::string segfaults at dlclose.)
@@ -191,6 +214,7 @@ public:
         if (index < 0 || index >= kNumParams || !inst_) return;
         if (t_pushing == index) return;          // the host echoing what the worker just told it
         const PSpec& s = g_pspecs[index];
+        if (index == kPitchWheel) { pitchWheel(plain); return; }
         if (s.flags & kLocal) { localChanged(index, plain); return; }
         if (s.flags & kReadOnly) return;         // the engine's readouts
         hostAt_[index].store(nowMs());
@@ -265,10 +289,10 @@ public:
     void programPicked(int prog)
     {
         if (prog < 0 || prog >= kFactory + kFavSlots || nowMs() < ignoreProgUntil_.load()) return;
-        if (prog < kFactory) { applyState(g_factory[prog].state, false); return; }
+        if (prog < kFactory) { applyState(g_factory[prog].state, false); return; }   // (the factory table has no quality)
         std::string st;
         { std::lock_guard<std::mutex> g(favMu_); if (favs_[(size_t)(prog - kFactory)].used) st = favs_[(size_t)(prog - kFactory)].state; }
-        if (!st.empty()) applyState(st);
+        if (!st.empty()) applyState(withoutQuality(st), false);
     }
 
     std::atomic<bool> loading_{false};   // set around an MPC chunk load (wrapped effSetChunk)
@@ -281,6 +305,16 @@ private:
         ~Lock() { pthread_mutex_unlock(&p_->lock_); }
         Model72Plugin* p_;
     };
+
+    // The OUTPUT tab's pitch wheel (-1..1): a MIDI pitch bend to the engine (BEND RANGE applies), as a wheel on a keyboard would send.
+    void pitchWheel(float v)
+    {
+        v = std::min(std::max(v, -1.0f), 1.0f);
+        const int b = std::min(16383, std::max(0, 8192 + (int)std::lround(v * (v < 0 ? 8192.0f : 8191.0f))));
+        const uint8_t m[3] = {0xE0, (uint8_t)(b & 0x7F), (uint8_t)(b >> 7)};
+        Lock l(this);
+        ca72_midi(inst_, m, 3);
+    }
 
     void sendMidi(const mpc::MidiEvent& e)
     {

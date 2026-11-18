@@ -154,10 +154,12 @@ static const PSpec g_pspecs[] = {
     {"kb_shift", "Key Shift", 0.0f, 1.0f, 0.0f, 145, nullptr, 0},
     {"kb_cancel", "Key Cancel", 0.0f, 1.0f, 0.0f, 145, nullptr, 0},
     {"kb_save", "Key Save", 0.0f, 1.0f, 0.0f, 145, nullptr, 0},
+    {"pitch_wheel", "Pitch Wheel", -1.0f, 1.0f, 0.0f, 20, nullptr, 0},
 };
-static const int kNumParams = 118;
+static const int kNumParams = 119;
 static const int kNumEngineParams = 72;   // 0 .. this - 1: the engine's keys (the 1.0.1 table)
 static const int kAutoDb = 52, kDot1 = 60, kDots = 10;
 static const int kFavAdd = 72, kFavDel = 73, kFavName = 74, kKbOpen = 75, kKbFirst = 76, kKbCount = 42;
 static const int kFavSlots = 64, kFavNameMax = 20;
+static const int kPitchWheel = 118;
 static const char kKbChars[] = "1234567890QWERTYUIOPASDFGHJKLZXCVBNM-";   // the character keys from kKbFirst (then space, delete, shift, cancel, save)

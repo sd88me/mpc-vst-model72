@@ -55,10 +55,13 @@ static int prog(AEffect* e) { return (int)e->dispatcher(e, effGetProgram, 0, 0, 
 static bool near(float a, float b) { return std::fabs(a - b) < 0.011f; }
 
 static double g_rms;
+static long g_cross;   // zero crossings of the left output in the last run()
 static void run(AEffect* e, int blocks, const std::vector<std::vector<uint8_t>>& midi = {}, int frames = 128)
 {
     float L[256], R[256], *out[2] = {L, R};
     double acc = 0; long n = 0;
+    g_cross = 0;
+    float prev = 0;
     for (int b = 0; b < blocks; b++)
     {
         if (b == 0 && !midi.empty())
@@ -78,7 +81,12 @@ static void run(AEffect* e, int blocks, const std::vector<std::vector<uint8_t>>&
             e->dispatcher(e, effProcessEvents, 0, 0, evs, 0);
         }
         e->processReplacing(e, nullptr, out, frames);
-        for (int i = 0; i < frames; i++) { acc += (double)L[i] * L[i] + (double)R[i] * R[i]; n += 2; }
+        for (int i = 0; i < frames; i++)
+        {
+            acc += (double)L[i] * L[i] + (double)R[i] * R[i]; n += 2;
+            if ((prev < 0) != (L[i] < 0)) g_cross++;
+            prev = L[i];
+        }
     }
     g_rms = n ? std::sqrt(acc / n) : 0;
 }
@@ -129,14 +137,14 @@ int main(int argc, char** argv)
     a->dispatcher(a, effGetEffectName, 0, 0, name, 0);
     CHECK(a->uniqueID == (VstInt32)M72_EXPECT_UID, "uid %08x", (unsigned)a->uniqueID);
     CHECK(!std::strcmp(name, M72_EXPECT_NAME), "name \"%s\"", name);
-    CHECK(a->numParams == 118, "118 params: the 72 of 1.0.1 + user presets and keyboard (%d)", a->numParams);
+    CHECK(a->numParams == 119, "119 params: the 72 of 1.0.1 + user presets, keyboard, pitch wheel (%d)", a->numParams);
     CHECK(a->dispatcher(a, effGetVendorVersion, 0, 0, nullptr, 0) == 2000, "version 2000");
     {
         int bad = 0, i = 0;
         std::ifstream f("vst/params.lock");
         std::string line;
         while (std::getline(f, line)) if (!line.empty() && (i >= kNumParams || line != g_pspecs[i++].key)) bad++;
-        CHECK(i == 118 && bad == 0, "order = vst/params.lock (%d keys, %d differ)", i, bad);
+        CHECK(i == 119 && bad == 0, "order = vst/params.lock (%d keys, %d differ)", i, bad);
         CHECK(QUAL == 0 && idx("retrigger") == 71 && kFavAdd == 72, "quality 0, retrigger 71 (the 1.0.1 table), then fav_add 72");
         char pn[64] = {0};
         a->dispatcher(a, effGetParamName, 0, 0, pn, 0);
@@ -230,6 +238,48 @@ int main(int argc, char** argv)
     CHECK(engi(a, "patch") == 1 && std::lround(plainOf(a, idx("patch"))) == 1, "Feedback Funk: PATCH on, the control follows");
     CHECK(g_updateDisplay > 0, "one display update for the new program (%d)", g_updateDisplay.load());
     CHECK(prog(a) == 2, "the PRESET menu is on it");
+
+    std::printf("== QUALITY is not part of a preset\n");
+    a->setParameter(a, QUAL, 1.0f);
+    std::this_thread::sleep_for(std::chrono::milliseconds(80));
+    settle(a);
+    a->dispatcher(a, effSetProgram, 0, 5, nullptr, 0);
+    settle(a);
+    CHECK(engi(a, "quality") == 1 && std::lround(plainOf(a, QUAL)) == 1, "a factory preset leaves QUALITY at HI");
+    a->dispatcher(a, effSetProgram, 0, 2, nullptr, 0);
+    settle(a);
+    a->setParameter(a, QUAL, 0.0f);
+    std::this_thread::sleep_for(std::chrono::milliseconds(80));
+    settle(a);
+    CHECK(engi(a, "quality") == 0, "back to LO");
+
+    std::printf("== pitch wheel\n");
+    {
+        const int PW = kPitchWheel, BR = idx("midi_bend_range");
+        CHECK(PW == 118 && near(plainOf(a, PW), 0.0f), "pitch_wheel is param 118, centred");
+        AEffect* w = open("W");
+        w->setParameter(w, idx("osc1_waveform"), 0.0f);       // one triangle, the filter open: crossings follow the pitch
+        w->setParameter(w, CUT, 1.0f);
+        w->setParameter(w, idx("entropy"), 0.0f);
+        w->setParameter(w, BR, norm(BR, 7.0f));               // a fifth up at full wheel
+        settle(w);
+        const std::string st = eng(w, "state");
+        run(w, 20, {{0x90, 45, 100}});
+        run(w, 400);
+        const long c0 = g_cross;
+        w->setParameter(w, PW, norm(PW, 1.0f));
+        run(w, 40);
+        run(w, 400);
+        const long c1 = g_cross;
+        CHECK(c1 > c0 * 1.3 && c1 < c0 * 1.7, "full wheel up raises the note a fifth (crossings %ld -> %ld)", c0, c1);
+        CHECK(eng(w, "state") == st, "the wheel is a performance control, not part of the sound");
+        w->setParameter(w, PW, norm(PW, 0.0f));
+        run(w, 40);
+        run(w, 400);
+        CHECK(std::labs(g_cross - c0) < c0 / 20, "back to centre: the note is back (%ld)", g_cross);
+        run(w, 2, {{0x80, 45, 0}});
+        close(w);
+    }
 
     std::printf("== state round trip\n");
     a->setParameter(a, CUT, norm(CUT, 2.5f));
@@ -341,6 +391,17 @@ int main(int argc, char** argv)
         a->dispatcher(a, effSetProgram, 0, slot, nullptr, 0);
         settle(a);
         CHECK(eng(a, "state") == saved && near(plainOf(a, CUT), 1.25f), "picking it restores it (CUTOFF %.2f)", plainOf(a, CUT));
+        a->setParameter(a, QUAL, 1.0f);
+        std::this_thread::sleep_for(std::chrono::milliseconds(80));
+        settle(a);
+        a->dispatcher(a, effSetProgram, 0, 10, nullptr, 0);
+        settle(a);
+        a->dispatcher(a, effSetProgram, 0, slot, nullptr, 0);
+        settle(a);
+        CHECK(engi(a, "quality") == 1, "a user preset (saved in LO) leaves QUALITY at HI");
+        a->setParameter(a, QUAL, 0.0f);
+        std::this_thread::sleep_for(std::chrono::milliseconds(80));
+        settle(a);
         AEffect* e2 = open("E (reads the presets file)");
         CHECK(m72_dbg_favs(e2) == n0 + 1 && progName(e2, slot) == progName(a, slot), "a new instance reads it from model72-presets.dat");
         close(e2);

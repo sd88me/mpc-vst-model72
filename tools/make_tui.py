@@ -234,7 +234,7 @@ QBLOCKS = {
         ["drive", "auto_gain", "volume", "a440"],                       # OUTPUT
         ["mode", "voices", "entropy", "quality"],                       # VOICES
         ["note_priority", "retrigger", "glide_on", "decay_on"],         # keyboard
-        ["midi_bend_range", "mod_wheel"],                               # CONTROLLER
+        ["midi_bend_range", "pitch_wheel", "mod_wheel"],                # CONTROLLER
     ]],
     "STEREO": [[
         ["spread", "inner", "double"],
@@ -352,6 +352,10 @@ def main():
         shutil.rmtree(OUT)
     os.makedirs(OUT)
     order, tabs = parse_layout()
+    # 2.0: the pitch wheel, painted on OUTPUT since 1.0 but without a control. Same size as the MOD wheel, 126 px to its left; its strip
+    # is the MOD wheel's (its middle frame is the painted centre detent), -1..1 over the frames.
+    tabs["OUTPUT"]["items"].append(("slider_v", dict(cx="1049", cy="451", w="84", h="310", key="pitch_wheel", strip="art/mod_wheel.png",
+                                                     frames="48", ns="0", vs="0")))
     pages, used = [], set()
     for fn, name in enumerate(order):
         spec = tabs[name]
