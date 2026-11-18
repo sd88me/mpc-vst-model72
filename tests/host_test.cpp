@@ -320,6 +320,22 @@ int main(int argc, char** argv)
         close(e);
     }
 
+    std::printf("== a preset file without QUALITY (Presets/*.xpl)\n");
+    {
+        AEffect* e = open("xpl");
+        e->setParameter(e, QUAL, 1.0f);
+        std::this_thread::sleep_for(std::chrono::milliseconds(80));
+        settle(e);
+        std::string t = "mode=1;voices=5;cutoff=-2;patch=1";
+        std::vector<uint8_t> c(t.begin(), t.end());
+        c.push_back(0);
+        CHECK(setChunk(e, c) == 1, "takes a 1.x-style state that starts with mode=");
+        settle(e);
+        CHECK(engi(e, "quality") == 1 && std::lround(plainOf(e, QUAL)) == 1, "  QUALITY stays HI");
+        CHECK(engi(e, "mode") == 1 && engi(e, "voices") == 5 && near(engf(e, "cutoff"), -2.0f) && engi(e, "patch") == 1, "  the sound is loaded");
+        close(e);
+    }
+
     std::printf("== bad chunks\n");
     {
         const std::string st = eng(b, "state");

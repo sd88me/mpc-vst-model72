@@ -87,8 +87,13 @@ def write_xpl(skin):
     so_path = "%%payload-path%%/%s - VST - %s/%s" % (cfg["vendor"], cfg["name"], cfg["so"])
     uid = int.from_bytes(cfg["uid"].encode(), "big")
     os.makedirs(os.path.join(skin, "Presets"), exist_ok=True)
-    for i, (name, v) in enumerate(json.load(open(os.path.join(VST, "presets", "factory.json"))), 1):
-        state = ";".join("%s=%s" % (k, x) for k, x in v.items()).encode() + b"\0"
+    # 2.0: no quality in a preset (LO / HI is the device's choice; the plugin loads a state without it and keeps its own),
+    # nor the engine's readouts. 0000-Default is the panel's defaults, as 1.0.1 shipped it.
+    skip = lambda k: k == "quality" or k == "auto_db" or k.startswith("dot_")
+    defaults = {p["key"]: (p["options"].index(p["default"]) if "options" in p else p["default"]) for p in params()}
+    rows = [("Default", defaults)] + [tuple(r) for r in json.load(open(os.path.join(VST, "presets", "factory.json")))]
+    for i, (name, v) in enumerate(rows):
+        state = ";".join("%s=%s" % (k, x) for k, x in v.items() if not skip(k)).encode() + b"\0"
         fn = os.path.join(skin, "Presets", "%04d-%s.xpl" % (i, name))
         with open(fn, "w", encoding="utf-8") as f:
             f.write(xpl.xpl(cfg["name"], cfg["vendor"], so_path, uid, cfg.get("version", 1000), state, preset=name))

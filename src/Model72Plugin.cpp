@@ -113,8 +113,16 @@ uint32_t fnv(const char* s)
     return h;
 }
 
-// The engine's state text: "key=value;..." over its keys, starting with the first one (quality).
-bool isState(const std::string& s) { return s.compare(0, 8, "quality=") == 0; }
+// The engine's state text: "key=value;..." over its keys. A saved project's starts with quality (the first key); a preset file's
+// (Presets/*.xpl, 2.0) has no quality, so that loading it leaves LO / HI alone: any of the 1.0.1 engine keys first is accepted.
+bool isState(const std::string& s)
+{
+    const size_t eq = s.find('=');
+    if (eq == std::string::npos || eq == 0 || eq > 24) return false;
+    for (int i = 0; i < kNumEngineParams; ++i)
+        if (s.compare(0, eq, g_pspecs[i].key) == 0 && std::strlen(g_pspecs[i].key) == eq) return true;
+    return false;
+}
 
 thread_local int t_pushing = -1;   // the parameter the worker is telling the host about right now (its echo is ignored)
 

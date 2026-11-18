@@ -16,9 +16,15 @@ URW Gothic (AGPL-3.0 with font exception)
   Copyright URW++ Design & Development. The panel's lettering (skin/assets/URWGothic-Book.otf, -Demi.otf).
   The licence and exception: skin/assets/URW-LICENSE.
 
+MPC Plugin SDK (MIT)
+  Copyright (c) 2026 inMusic Brands, Inc.   https://github.com/inmusic-software/mpc-plugin-builder-sdk
+  The plugin framework (framework/mpc_plugin.h, the VST2 interface) compiled into the plugin since 2.0.
+
 mpc-vst-plugins (MIT)
   Copyright (c) 2026 sd88me   https://github.com/sd88me/mpc-vst-plugins
-  The VST2 wrapper and MPC integration compiled into the plugin (wrapper/, tools/).
+  The installer and packaging tools (release.py, install.sh). Builds before 2.0 compiled its VST2 wrapper in.
+
+LLVM libc++ / libc++abi / libunwind (Apache-2.0 WITH LLVM-exception), statically linked by the zig toolchain.
 
 libm 0.2 (MIT)
   Copyright (c) the Rust project and contributors   https://github.com/rust-lang/compiler-builtins   statically linked.

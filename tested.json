@@ -1,5 +1,12 @@
 [
  {
+  "version": "2.0.0",
+  "device": "Akai MPC Live III",
+  "firmware": "MPC OS 3.10.1",
+  "date": "2026-11-18",
+  "note": "The 2.0 beta (same code, its own name and id) installed next to 1.0.1: skin, Q-Links, user presets with the keyboard, QUALITY default HI, the pitch wheel. The Force (armv7) build has only had the offline tests."
+ },
+ {
   "version": "1.0.0",
   "device": "Akai Force",
   "firmware": "MPC OS 3.9.1",
